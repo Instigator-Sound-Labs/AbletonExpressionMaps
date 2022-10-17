@@ -1,0 +1,2 @@
+Traverse directory, convert to json, then pack fields in to the struct for keyswitch output
+Capture current directory name, and create new top level directory for ableton json in the same structure
