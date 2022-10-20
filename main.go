@@ -2,35 +2,38 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
-	"strings"
-
-	convert "github.com/basgys/goxml2json"
 )
 
 type Logic struct {
-	Plist struct {
-		Dict struct {
-			Array []struct {
-				Dict []struct {
-					Key     []string `json:"key"`
-					Integer []string `json:"integer"`
-					String  string   `json:"string"`
-					Dict    struct {
-						Key     []string `json:"key"`
-						Integer []string `json:"integer"`
-						String  string   `json:"string"`
-					} `json:"dict"`
-				} `json:"dict"`
-			} `json:"array"`
-			String  string   `json:"string"`
-			Integer string   `json:"integer"`
-			Key     []string `json:"key"`
-		} `json:"dict"`
-		Version string `json:"-version"`
-	} `json:"plist"`
+	XMLName xml.Name `xml:"plist"`
+	Text    string   `xml:",chardata"`
+	Version string   `xml:"version,attr"`
+	Dict    struct {
+		Text  string   `xml:",chardata"`
+		Key   []string `xml:"key"`
+		Array []struct {
+			Text string `xml:",chardata"`
+			Dict []struct {
+				Text    string   `xml:",chardata"`
+				Key     []string `xml:"key"`
+				Integer []string `xml:"integer"`
+				String  []string `xml:"string"`
+				Dict    struct {
+					Text    string   `xml:",chardata"`
+					Key     []string `xml:"key"`
+					Integer []string `xml:"integer"`
+					String  string   `xml:"string"`
+				} `xml:"dict"`
+			} `xml:"dict"`
+		} `xml:"array"`
+		String  string `xml:"string"`
+		Integer string `xml:"integer"`
+	} `xml:"dict"`
 }
 
 type Ableton struct {
@@ -43,7 +46,7 @@ type Ableton struct {
 	Ccn   string `json:"ccn"`
 	Ccv   string `json:"ccv"`
 	Chn   string `json:"chn"`
-	Color int    `json:"color"`
+	Color string `json:"color"`
 }
 
 func main() {
@@ -88,25 +91,27 @@ func main() {
 
 func makeJson() {
 	// xml is an io.Reader
-	data, err := os.ReadFile("/Users/johngoldsmith/code/AbletonExpressionMaps/NISE String Ensemble.plist")
-	xml := strings.NewReader(string(data))
-	articulation, err := convert.Convert(xml)
+	xmlFile, err := os.Open("/Users/johngoldsmith/code/AbletonExpressionMaps/NISE String Ensemble.plist")
+	byteValue, _ := ioutil.ReadAll(xmlFile)
+	var articulation Logic
+	xml.Unmarshal(byteValue, &articulation)
 	if err != nil {
 		panic("That's embarrassing...")
 	}
-
-	dataStruct := Logic{}
-	json.Unmarshal([]byte(articulation.String()), &dataStruct)
-	numOfSwitches := len(dataStruct.Plist.Dict.Array[1].Dict)
+	var getName []string
+	numOfSwitches := len(articulation.Dict.Array[1].Dict)
 	for i := 0; i < numOfSwitches; i++ {
-		keySwitch, _ := strconv.Atoi(dataStruct.Plist.Dict.Array[1].Dict[i].Integer[1])
-		convertJson(keySwitch)
+		getName = articulation.Dict.Array[0].Dict[i].String
+		keySwitch, _ := strconv.Atoi(articulation.Dict.Array[1].Dict[i].Integer[1])
+		output := convertJson(keySwitch, getName[0])
+		fmt.Println(output)
 	}
+	defer xmlFile.Close()
 }
 
-func convertJson(keySwitch int) {
+func convertJson(keySwitch int, getName string) string {
 	newDataStruct := Ableton{}
-	newDataStruct.Name = "-"
+	newDataStruct.Name = getName
 	newDataStruct.Key = keySwitch
 	newDataStruct.Key0 = "-"
 	newDataStruct.Bnk = "-"
@@ -115,15 +120,12 @@ func convertJson(keySwitch int) {
 	newDataStruct.Ccn = "-"
 	newDataStruct.Ccv = "-"
 	newDataStruct.Chn = "-"
-	newDataStruct.Color = 1
+	newDataStruct.Color = "-"
 	output, err := json.Marshal(newDataStruct)
 	if err != nil {
 
 	}
-	fmt.Println(string(output))
-	// json to json
-	// convert output of struct to Ableton
-
+	return string(output)
 }
 
 func makeFile() {
