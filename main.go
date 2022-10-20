@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Logic struct {
@@ -49,67 +50,59 @@ type Ableton struct {
 	Color string `json:"color"`
 }
 
+type AbletonStruct struct {
+	Output interface{}
+}
+
 func main() {
 	makeJson()
 }
 
-// func getDir() {
-// 	// get current Dir from the walk.
-// 	path, _ := os.Getwd()
-// 	fmt.Println(path)
-// }
+func getDir() {
+	// get current Dir from the walk.
+	path, _ := os.Getwd()
+	fmt.Println(path)
+}
 
-// func walkPath() { // maybe move to main?
-// 	path, err := os.Getwd()
-// 	if err != nil {
-// 		fmt.Printf("cannot get current dir: %v\n", err)
-// 		return
-// 	}
-// 	os.Chdir(path)
-
-// 	subDirToSkip := "skip"
-
-// 	fmt.Println("On Unix:")
-// 	// ensure the files are only plist files.
-// 	err = filepath.Walk(".", func(path string, info fs.FileInfo, err error) error {
-// 		if err != nil {
-// 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
-// 			return err
-// 		}
-// 		if info.IsDir() && info.Name() == subDirToSkip {
-// 			fmt.Printf("skipping a dir without errors: %+v \n", info.Name())
-// 			return filepath.SkipDir
-// 		}
-// 		fmt.Printf("visited file or dir: %q\n", path)
-// 		return nil
-// 	})
-// 	if err != nil {
-// 		fmt.Printf("error walking the path %q: %v\n", path, err)
-// 		return
-// 	}
-// }
+func walkPath() {
+}
 
 func makeJson() {
 	// xml is an io.Reader
-	xmlFile, err := os.Open("/Users/johngoldsmith/code/AbletonExpressionMaps/NISE String Ensemble.plist")
+	xmlFile, err := os.Open("/Users/johngoldsmith/code/AbletonExpressionMaps/SFA1 Brass High CB.plist")
 	byteValue, _ := ioutil.ReadAll(xmlFile)
 	var articulation Logic
 	xml.Unmarshal(byteValue, &articulation)
 	if err != nil {
 		panic("That's embarrassing...")
 	}
+	final := buildAbletonStruct(articulation)
+	jsonOutput := []byte(final)
+	_ = ioutil.WriteFile("outputtest.json", jsonOutput, 0644)
+	defer xmlFile.Close()
+}
+
+func buildAbletonStruct(articulation Logic) string {
+	var abletonStruct []string
 	var getName []string
 	numOfSwitches := len(articulation.Dict.Array[1].Dict)
 	for i := 0; i < numOfSwitches; i++ {
 		getName = articulation.Dict.Array[0].Dict[i].String
 		keySwitch, _ := strconv.Atoi(articulation.Dict.Array[1].Dict[i].Integer[1])
-		output := convertJson(keySwitch, getName[0])
-		fmt.Println(output)
+		output := convertToJson(keySwitch, getName[0], i)
+		store := map[string]interface{}{strconv.Itoa(i + 1): output}
+		values, _ := json.Marshal(store)
+		clipEnd := strings.TrimSuffix(string(values), "}")
+		clipBeginning := strings.TrimPrefix(clipEnd, "{")
+		toAppend := clipBeginning
+		abletonStruct = append(abletonStruct, toAppend)
 	}
-	defer xmlFile.Close()
+	output := strings.Join(abletonStruct, ",")
+	first := `{"KSEM-Version": 4.1, "ks":{` + output + "}}"
+	return first
 }
 
-func convertJson(keySwitch int, getName string) string {
+func convertToJson(keySwitch int, getName string, i int) Ableton {
 	newDataStruct := Ableton{}
 	newDataStruct.Name = getName
 	newDataStruct.Key = keySwitch
@@ -121,11 +114,7 @@ func convertJson(keySwitch int, getName string) string {
 	newDataStruct.Ccv = "-"
 	newDataStruct.Chn = "-"
 	newDataStruct.Color = "-"
-	output, err := json.Marshal(newDataStruct)
-	if err != nil {
-
-	}
-	return string(output)
+	return newDataStruct
 }
 
 func makeFile() {

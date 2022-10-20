@@ -1,5 +1,4 @@
-Need to capture name.
-    Match integer from name section where string exists and grab the note? Or vice versa?
 Once name is captured, build struct to push new items in to and then create JSON from it. Each item is numbred 
     Maybe build a struct of names with numbers and match to the switch output.
+Check spitfire libs, EW libs and a few others for struct changes.
 Capture current directory name, and create new top level directory for ableton json in the same structure
