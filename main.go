@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -55,21 +56,46 @@ type AbletonStruct struct {
 }
 
 func main() {
-	makeJson()
-}
-
-func getDir() {
-	// get current Dir from the walk.
-	path, _ := os.Getwd()
-	fmt.Println(path)
+	walkPath()
 }
 
 func walkPath() {
+	var (
+		files []string
+		err   error
+	)
+
+	err = filepath.Walk(".",
+		func(root string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			files = append(files, root)
+			return nil
+		})
+	if err != nil {
+		fmt.Println(err)
+	}
+	for _, file := range files {
+		period := strings.Contains(file, ".")
+		plist := strings.Contains(file, ".plist")
+		ableton := "Ableton/"
+		if period != true {
+			err := os.MkdirAll(ableton+file, 0700)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		if plist == true {
+			fmt.Println(file)
+			makeJson(file)
+		}
+	}
 }
 
-func makeJson() {
+func makeJson(file string) {
 	// xml is an io.Reader
-	xmlFile, err := os.Open("/Users/johngoldsmith/code/AbletonExpressionMaps/SFA1 Brass High CB.plist")
+	xmlFile, err := os.Open(file)
 	byteValue, _ := ioutil.ReadAll(xmlFile)
 	var articulation Logic
 	xml.Unmarshal(byteValue, &articulation)
@@ -78,7 +104,9 @@ func makeJson() {
 	}
 	final := buildAbletonStruct(articulation)
 	jsonOutput := []byte(final)
-	_ = ioutil.WriteFile("outputtest.json", jsonOutput, 0644)
+	cutFile := strings.Split(file, ".plist")
+	outPutFinal := "Ableton/" + cutFile[0] + ".json"
+	_ = ioutil.WriteFile(outPutFinal, jsonOutput, 0644)
 	defer xmlFile.Close()
 }
 
